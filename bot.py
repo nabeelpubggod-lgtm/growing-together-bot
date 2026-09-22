@@ -345,28 +345,46 @@ async def mine(update, ctx):
 
 async def award_participation(update, ctx):
     q = update.callback_query
+
     if not await channel_member(ctx.bot, q.from_user.id):
         await q.answer("Join Growing Together first.", show_alert=True)
         return
+
     save_user(q.from_user)
+
     key = q.data.split(":", 1)[1]
     amount = ADMIN_BONUS_COINS if key == "ADMIN_MAIN" else COINS_PER_PARTICIPATION
+
     try:
-        supabase.table("participation").insert({
-            "user_id": q.from_user.id,
-            "post_key": key,
-            "coins_awarded": amount,
-        }).execute()
-    except Exception as e:
-        # The primary key (user_id, post_key) prevents duplicate rewards.
-        if "duplicate" in str(e).lower() or "unique" in str(e).lower():
-            await q.answer("Already counted for this post.", show_alert=True)
+        result = supabase.rpc(
+            "award_participation",
+            {
+                "p_user_id": q.from_user.id,
+                "p_post_key": key,
+                "p_amount": amount,
+                "p_note": "Community participation reward"
+            }
+        ).execute()
+
+        if not result.data:
+            await q.answer(
+                "Already counted for this post.",
+                show_alert=True
+            )
             return
-        log.exception("Participation insert failed")
-        await q.answer("Could not record participation. Try again.", show_alert=True)
-        return
-    change_coins(q.from_user.id, amount)
-    await q.answer(f"+{amount} coin(s) added! 🪙", show_alert=True)
+
+        await q.answer(
+            f"+{amount} coin(s) added! 🪙",
+            show_alert=True
+        )
+
+    except Exception:
+        log.exception("Participation reward failed")
+        await q.answer(
+            "Could not record participation. Try again.",
+            show_alert=True
+        )
+    
 
 
 async def approve(update, ctx):
