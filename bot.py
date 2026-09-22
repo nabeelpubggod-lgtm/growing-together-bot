@@ -1,4 +1,4 @@
-import os, re, logging
+import os, re, logging, secrets
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
@@ -23,6 +23,7 @@ AUTO_APPROVE = os.getenv("AUTO_APPROVE", "true").lower() in ("1", "true", "yes",
 TZ = ZoneInfo(os.getenv("TIMEZONE", "Asia/Kolkata"))
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+TRACK_PARTICIPATION_URL = os.environ["TRACK_PARTICIPATION_URL"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 PLATFORMS = {
@@ -307,6 +308,29 @@ async def receive_url(update, ctx):
 async def cancel(update, ctx):
     await update.message.reply_text("Cancelled.")
     return ConversationHandler.END
+
+
+def create_participation_session(uid, post_key, target_url):
+    token = secrets.token_urlsafe(32)
+    expires_at = now() + timedelta(minutes=5)
+
+    result = (
+        supabase.table("participation_sessions")
+        .insert({
+            "user_id": uid,
+            "post_key": post_key,
+            "token": token,
+            "target_url": target_url,
+            "expires_at": expires_at.isoformat(),
+        })
+        .execute()
+    )
+
+    if not result.data:
+        raise RuntimeError("Could not create participation session")
+
+    tracked_url = f"{TRACK_PARTICIPATION_URL}?token={token}"
+    return tracked_url
 
 
 def queue_rows(limit=50):
