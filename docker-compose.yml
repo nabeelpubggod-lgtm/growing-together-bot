@@ -1,0 +1,5 @@
+services:
+  growing-together:
+    build: .
+    restart: unless-stopped
+    env_file: .env
