@@ -642,9 +642,19 @@ async def publish_one(ctx, sid=None):
            f"👤 @{row['username'] or 'creator'}\n📱 {row['platform']}\n\n"
            "Discover a creator from our community 👇")
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("▶️ Watch / Visit post", url=row["url"])],
-        [InlineKeyboardButton(f"🤝 Participate +{COINS_PER_PARTICIPATION} 🪙", callback_data=f"start:SPOT_{row['id']}"
-    ])
+    [
+        InlineKeyboardButton(
+            "▶️ Watch / Visit post",
+            url=row["url"]
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            f"🤝 Participate +{COINS_PER_PARTICIPATION} 🪙",
+            callback_data=f"start:SPOT_{row['id']}"
+        )
+    ]
+])
     await ctx.bot.send_message(CHANNEL_ID, msg, reply_markup=kb, parse_mode="Markdown")
     supabase.table("submissions").update({"published_at": now().isoformat()}).eq("id", row["id"]).execute()
     try:
