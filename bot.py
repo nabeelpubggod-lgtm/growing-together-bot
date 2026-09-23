@@ -113,7 +113,7 @@ async def channel_member(bot, uid):
 
 def admin_post_markup():
     return InlineKeyboardMarkup([[InlineKeyboardButton(
-        f"🤝 Participate +{ADMIN_BONUS_COINS} 🪙", callback_data="part:ADMIN_MAIN"
+        f"🤝 Participate +{ADMIN_BONUS_COINS} 🪙", callback_data="start:ADMIN_MAIN"
     )]])
 
 
@@ -780,7 +780,6 @@ def main():
     app.add_handler(CallbackQueryHandler(coins, pattern="^coins$"))
     app.add_handler(CallbackQueryHandler(mine, pattern="^mine$"))
     app.add_handler(CallbackQueryHandler(rules, pattern="^rules$"))
-    app.add_handler(CallbackQueryHandler(debug_start, pattern="^start:"))
     app.add_handler(CallbackQueryHandler(start_participation, pattern="^start:"))
     app.add_handler(CallbackQueryHandler(claim_participation, pattern="^claim:"))
     app.add_handler(CallbackQueryHandler(approve, pattern="^a:"))
