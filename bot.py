@@ -643,7 +643,7 @@ async def publish_one(ctx, sid=None):
            "Discover a creator from our community 👇")
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("▶️ Watch / Visit post", url=row["url"])],
-        [InlineKeyboardButton(f"🤝 Participate +{COINS_PER_PARTICIPATION} 🪙", callback_data=f"part:SPOT_{row['id']}")]
+        [InlineKeyboardButton(f"🤝 Participate +{COINS_PER_PARTICIPATION} 🪙", callback_data=f"start:SPOT_{row['id']}"
     ])
     await ctx.bot.send_message(CHANNEL_ID, msg, reply_markup=kb, parse_mode="Markdown")
     supabase.table("submissions").update({"published_at": now().isoformat()}).eq("id", row["id"]).execute()
