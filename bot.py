@@ -440,14 +440,17 @@ async def start_participation(update, ctx):
     ]
 ])
 
-        await q.message.reply_text(
-            "🤝 Participation started.\n\n"
-            "1️⃣ Tap **Open Video / Post** first.\n"
-            "2️⃣ Visit the post.\n"
-            "3️⃣ Return to Telegram and tap **Claim Coin**.\n\n"
-            "⚠️ You cannot claim the reward before opening the tracked link.",
-            reply_markup=kb,
-            parse_mode="Markdown"
+        await ctx.bot.send_message(
+    chat_id=q.from_user.id,
+    text=(
+        "🤝 Participation started.\n\n"
+        "1️⃣ Tap **Open Video / Post** first.\n"
+        "2️⃣ Visit the post.\n"
+        "3️⃣ Return to Telegram and tap **Claim Coin**.\n\n"
+        "⚠️ You cannot claim the reward before opening the video/post."
+    ),
+    reply_markup=kb,
+    parse_mode="Markdown"
         )
 
     except Exception:
