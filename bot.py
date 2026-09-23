@@ -375,7 +375,7 @@ async def debug_start(update, ctx):
     await q.answer("START HANDLER RECEIVED!", show_alert=True)
 async def start_participation(update, ctx):
     q = update.callback_query
-    await q.answer()
+    await q.answer("START HANDLER WORKING!", show_alert=True)
 
     if not await channel_member(ctx.bot, q.from_user.id):
         await q.answer("Join Growing Together first.", show_alert=True)
