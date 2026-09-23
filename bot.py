@@ -367,7 +367,98 @@ async def mine(update, ctx):
     await q.message.reply_text("\n".join(out), parse_mode="Markdown")
 
 
-async def award_participation(update, ctx):
+async def start_participation(update, ctx):
+    q = update.callback_query
+    await q.answer()
+
+    if not await channel_member(ctx.bot, q.from_user.id):
+        await q.answer("Join Growing Together first.", show_alert=True)
+        return
+
+    save_user(q.from_user)
+
+    key = q.data.split(":", 1)[1]
+    target_url = None
+
+    if key.startswith("SPOT_"):
+        try:
+            sid = int(key.split("_", 1)[1])
+        except ValueError:
+            await q.answer("Invalid participation post.", show_alert=True)
+            return
+
+        r = (
+            supabase.table("submissions")
+            .select("url")
+            .eq("id", sid)
+            .eq("status", "approved")
+            .limit(1)
+            .execute()
+        )
+
+        if r.data:
+            target_url = r.data[0]["url"]
+
+    elif key == "ADMIN_MAIN":
+        r = (
+            supabase.table("settings")
+            .select("value")
+            .eq("key", "admin_post_url")
+            .limit(1)
+            .execute()
+        )
+
+        if r.data:
+            target_url = r.data[0]["value"]
+
+    if not target_url:
+        await q.answer(
+            "This participation post is not configured yet.",
+            show_alert=True
+        )
+        return
+
+    try:
+        tracked_url = create_participation_session(
+            q.from_user.id,
+            key,
+            target_url
+        )
+
+        kb = InlineKeyboardMarkup([
+    [
+        InlineKeyboardButton(
+            "▶️ Open Video / Post",
+            url=tracked_url
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            f"✅ Claim +{COINS_PER_PARTICIPATION} Coins",
+            callback_data=f"claim:{key}"
+        )
+    ]
+])
+
+        await q.message.reply_text(
+            "🤝 Participation started.\n\n"
+            "1️⃣ Tap **Open Video / Post** first.\n"
+            "2️⃣ Visit the post.\n"
+            "3️⃣ Return to Telegram and tap **Claim Coin**.\n\n"
+            "⚠️ You cannot claim the reward before opening the tracked link.",
+            reply_markup=kb,
+            parse_mode="Markdown"
+        )
+
+    except Exception:
+        log.exception("Could not create participation session")
+        await q.answer(
+            "Could not start participation. Try again.",
+            show_alert=True
+        )
+
+
+async def claim_participation(update, ctx):
     q = update.callback_query
 
     if not await channel_member(ctx.bot, q.from_user.id):
@@ -380,6 +471,40 @@ async def award_participation(update, ctx):
     amount = ADMIN_BONUS_COINS if key == "ADMIN_MAIN" else COINS_PER_PARTICIPATION
 
     try:
+        rows = (
+            supabase.table("participation_sessions")
+            .select("*")
+            .eq("user_id", q.from_user.id)
+            .eq("post_key", key)
+            .is_("claimed_at", "null")
+            .order("id", desc=True)
+            .limit(5)
+            .execute()
+        )
+
+        session = None
+
+        for row in rows.data or []:
+            if not row.get("clicked_at"):
+                continue
+
+            expires_at = datetime.fromisoformat(
+                row["expires_at"].replace("Z", "+00:00")
+            )
+
+            if now() > expires_at:
+                continue
+
+            session = row
+            break
+
+        if not session:
+            await q.answer(
+                "❌ Open the Video / Post first, then come back and claim your coin.",
+                show_alert=True
+            )
+            return
+
         result = supabase.rpc(
             "award_participation",
             {
@@ -397,18 +522,22 @@ async def award_participation(update, ctx):
             )
             return
 
+        supabase.table("participation_sessions").update({
+            "claimed_at": now().isoformat()
+        }).eq("id", session["id"]).execute()
+
         await q.answer(
             f"+{amount} coin(s) added! 🪙",
             show_alert=True
         )
 
     except Exception:
-        log.exception("Participation reward failed")
+        log.exception("Participation claim failed")
         await q.answer(
-            "Could not record participation. Try again.",
+            "Could not verify participation. Try again.",
             show_alert=True
         )
-    
+
 
 
 async def approve(update, ctx):
@@ -632,7 +761,8 @@ def main():
     app.add_handler(CallbackQueryHandler(coins, pattern="^coins$"))
     app.add_handler(CallbackQueryHandler(mine, pattern="^mine$"))
     app.add_handler(CallbackQueryHandler(rules, pattern="^rules$"))
-    app.add_handler(CallbackQueryHandler(award_participation, pattern="^part:"))
+    app.add_handler(CallbackQueryHandler(start_participation, pattern="^start:"))
+    app.add_handler(CallbackQueryHandler(claim_participation, pattern="^claim:"))
     app.add_handler(CallbackQueryHandler(approve, pattern="^a:"))
     app.add_handler(CallbackQueryHandler(reject_button, pattern="^r:"))
 
