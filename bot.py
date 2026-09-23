@@ -366,7 +366,10 @@ async def mine(update, ctx):
         out.append(f"#{row['id']} — {row['platform']} — {row['status']}{extra}")
     await q.message.reply_text("\n".join(out), parse_mode="Markdown")
 
-
+async def debug_callback(update, ctx):
+    q = update.callback_query
+    print("🔥 CALLBACK RECEIVED:", q.data)
+    await q.answer("Callback received!", show_alert=True)
 async def start_participation(update, ctx):
     q = update.callback_query
     await q.answer()
@@ -774,6 +777,7 @@ def main():
     app.add_handler(CallbackQueryHandler(coins, pattern="^coins$"))
     app.add_handler(CallbackQueryHandler(mine, pattern="^mine$"))
     app.add_handler(CallbackQueryHandler(rules, pattern="^rules$"))
+    app.add_handler(CallbackQueryHandler(debug_callback))
     app.add_handler(CallbackQueryHandler(start_participation, pattern="^start:"))
     app.add_handler(CallbackQueryHandler(claim_participation, pattern="^claim:"))
     app.add_handler(CallbackQueryHandler(approve, pattern="^a:"))
